@@ -5,11 +5,11 @@ for line in fileinput.input():
     print(line.strip())
     if not re.match("^MAIL.*$", line, flags=re.I):
         print("ERROR -- MAIL")
-    if not re.match("^( |    ).*$", line[4:len(line)-1], flags=re.I):
+    elif not re.match("^( |    ).*$", line[4:len(line)], flags=re.I):
         print("ERROR -- whitespace")
-    elif not re.match("^FROM:.*$", line[4:len(line)-1].strip(), flags=re.I):
+    elif not re.match("^FROM:.*$", line[4:len(line)].strip(), flags=re.I):
         print("ERROR -- FROM:")
-    elif not re.match("^<.*>$", line[line.index(':')+1:len(line)-1].strip(), flags=re.I):
+    elif not re.match("^<.*>$", line[line.index(':')+1:len(line)].strip(), flags=re.I):
         print("ERROR -- reverse-path")
     elif not re.match("^\S+@\S+$", line[line.index('<')+1:line.index('>')], flags=re.I):
         print("ERROR -- mailbox")
