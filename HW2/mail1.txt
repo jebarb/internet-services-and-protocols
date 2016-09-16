@@ -9,6 +9,7 @@ anonymous SPAM to the world!
 <blah>
 <CRLF>.<CRLF>
 MAIL FROM: <jeffay@cs.unc.edu>
+DATA
 RCPT TO: <tcntounc@cs.unc.edu>
 RCPT TO: <pozefsky@cs.unc.edu>
 DATA
