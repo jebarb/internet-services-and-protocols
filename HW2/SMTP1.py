@@ -77,7 +77,7 @@ def process():
     email_text = ""
     state = start_state
     for line in fileinput.input():
-        print(line.rstrip())
+        print(line.rstrip('\n'))
         if state == data_state:
             if re.match(end_data, line.rstrip(), flags=re.I):
                 print("250 OK")
