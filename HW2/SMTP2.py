@@ -65,10 +65,16 @@ def state_check(line):
             print("503 Bad sequence of commands")
         return start_state
 
-def write_to_file(sender, recipients, emails):
-    return null
+def write_to_file(sender, recipients, email_text):
+    for address in recipients:
+        address = address[1:len(address)-1].strip()
+        out = open(address, "a+")
+        out.write("From: " + sender + '\n')
+        for r in recipients:
+            out.write("To: " + r + '\n')
+        out.write(email_text)
 
-def main():
+def process():
     # store sender, recipients, email text
     sender = ""
     recipients = []
@@ -78,6 +84,7 @@ def main():
         print(line.rstrip())
         if state == data_state:
             if re.match(end_data, line.rstrip(), flags=re.I):
+                write_to_file(sender, recipients, email_text)
                 state = start_state
                 sender = ""
                 recipients = []
@@ -86,5 +93,10 @@ def main():
                 email_text += line
         else:
             state = state_check(line)
+            print(state)
+            if state == rcpt_state:
+                sender = line[line.index(':')+1:len(line)].strip()
+            elif state == rcpt_state or state == rcpt_data_state:
+                recipients.append(line[line.index(':')+1:len(line)].strip())
 
-main()
+process()
