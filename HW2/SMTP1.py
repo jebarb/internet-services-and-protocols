@@ -5,8 +5,8 @@ import re
 class smtp:  # define regex
     mail_from = re.compile("^MAIL( |\t)+FROM:.*$")
     rcpt_to = re.compile("^RCPT(\s|\t)+TO:.*$")
-    path = re.compile("^( |\t)*<[^\s<>()[\]\.,;:@\"]+"\
-            "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>( |\t)*\n$")
+    path = re.compile("^( |\t)*<[^\s<>()[\]\.,;:@\"]+" +
+                      "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>( |\t)*\n$")
     data = re.compile("^DATA( |\t)*\n$")
     end_data = re.compile("^\.\n$")
 
@@ -64,7 +64,7 @@ def write_to_file(sender, recipients, email_text):  # write email to file
         out.write(email_text)
 
 
-def process_smtp(): # process input and output
+def process_smtp():  # process input and output
     sender = email_text = ""
     recipients = []
     state = states.start

@@ -5,10 +5,10 @@ import sys
 
 class smtp:  # define regex
     path = re.compile("")
-    mail_from = re.compile("^From: <[^\s<>()[\]\.,;:@\"]+"\
-            "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
-    rcpt_to = re.compile("^To: <[^\s<>()[\]\.,;:@\"]+"\
-            "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
+    mail_from = re.compile("^From: <[^\s<>()[\]\.,;:@\"]+" +
+                           "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
+    rcpt_to = re.compile("^To: <[^\s<>()[\]\.,;:@\"]+" +
+                         "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
     finish = re.compile("^.\n$")
 
 
@@ -64,7 +64,7 @@ def response_check(line, command):
     return states.error
 
 
-def process_email(): # process input and output
+def process_email():  # process input and output
     state = states.start
     line = ""
     for line in fileinput.input():
