@@ -30,6 +30,10 @@ def state_check(line, command, state):  # ensure state sligns with command
     if state is states.message and command is states.data:
         print(line.rstrip('\n'))
         return state
+    elif state is states.data and command is states.start:
+        state = response_check("", send_command("", states.data, states.data))
+        return state if state is states.error else\
+            response_check("", send_command("", states.start, states.message))
     return response_check(line, send_command(line, command, state))
 
 
@@ -59,12 +63,13 @@ def response_check(line, command):  # check response against state
         pass
     response = input()
     sys.stderr.write(response.rstrip('\n') + "\n")  # ensure one newline char
-    if command == states.data:
+    if command is states.data:
         if response.startswith("354"):
-            print(line.rstrip('\n'))
+            if not line == "":
+                print(line.rstrip('\n'))
             return states.message
     elif response.startswith("250"):
-        return states.start if command == states.message else command + 1
+        return states.start if command is states.message else command + 1
     return states.error
 
 

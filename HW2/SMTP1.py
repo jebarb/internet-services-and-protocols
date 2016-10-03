@@ -38,17 +38,17 @@ def argument_check(line):  # validate command argument
 
 
 def state_check(state, command):  # ensure state+input align, print message
-    if state == command == states.data:
+    if state is command is states.data:
         print("354 Start mail input; end with <CRLF>.<CRLF>")
         return states.body
-    elif state == command or (state == states.data and command == states.rcpt):
+    elif state is command or (state is states.data and command is states.rcpt):
         print("250 OK")
         return command + 1
-    elif state == states.body:
+    elif state is states.body:
         return states.body
     elif command in [states.bad_cmd, states.body]:
         print("500 Syntax error: command unrecognized")
-    elif command == states.bad_arg:
+    elif command is states.bad_arg:
         print("501 Syntax error in parameters or arguments")
     else:
         print("503 Bad sequence of commands")
@@ -70,17 +70,17 @@ def process_smtp():  # process input and output
     state = states.start
     for line in fileinput.input():
         print(line.rstrip('\n'))
-        if state == states.start:
+        if state is states.start:
             sender = email_text = ""
             recipients = []
         state = state_check(state, command_check(line))
-        if state == states.rcpt:
+        if state is states.rcpt:
             sender = line[line.index(':')+1:].strip()
-        elif state == states.data:
+        elif state is states.data:
             recipients.append(line[line.index(':')+1:].strip())
-        elif state == states.body:
+        elif state is states.body:
             email_text += line
-        elif state == states.finish:
+        elif state is states.finish:
             email_text = email_text[email_text.index('\n')+1:]  # remove DATA
             write_to_file(sender, recipients, email_text)
             state = states.start
