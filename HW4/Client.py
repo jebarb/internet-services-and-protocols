@@ -1,4 +1,4 @@
-import fileinput
+import socket
 import re
 import sys
 
@@ -69,7 +69,19 @@ def response_check(line, command):  # check response against state
 def process_email():  # process input and output
     state = states.start
     line = ""
-    for line in fileinput.input():
+    hostname = socket.gethostname()
+    print(hostname)
+    server_port = 14615
+    print(server_port)
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((hostname, server_port))
+    while True:
+        message = raw_input('message: ')
+        client_socket.send(message.encode() + '\n')
+        response = client_socket.recv(1024).decode()
+        print("response: " + response)
+        client_socket.close()
+        '''
         state = state_check(line, command_check(line), state)
         if state is states.start:
             state = state_check(line, command_check(line), state)
@@ -82,6 +94,6 @@ def process_email():  # process input and output
     elif state is states.message:
         response_check(line, send_command(line, states.start, state))
     print("QUIT")
-
+'''
 
 process_email()
