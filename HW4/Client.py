@@ -1,6 +1,9 @@
 import socket
 import re
-import sys
+import fileinput
+
+
+conn = ""
 
 
 class smtp:  # define regex
@@ -8,17 +11,21 @@ class smtp:  # define regex
                            "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
     rcpt_to = re.compile("^To: <[^\s<>()[\]\.,;:@\"]+" +
                          "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
+    message_end = re.compile("^\.\n$")
+    path = re.compile("<[^\s<>()[\]\.,;:@\"]+" +
+                      "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>\n$")
 
 
 class states:      # define states
     start = 0      # initial state, accept from:
     rcpt = 1       # accept to:
     data = 2       # accept to: or data
-    message = 3    # accept data
+    msg = 3        # accept data
+    finish = 4     # finish email
     error = -1     # error state
 
 
-def command_check(line):  # validate command, return state that accepts it
+def commandcheck(line):  # validate command, return state that accepts it
     if smtp.mail_from.match(line):
         return states.start
     elif smtp.rcpt_to.match(line):
@@ -26,74 +33,92 @@ def command_check(line):  # validate command, return state that accepts it
     return states.data
 
 
-def state_check(line, command, state):  # ensure state sligns with command
-    if state is states.message and command is states.data:
-        print(line.rstrip('\n'))
-        return state
-    elif state is states.data and command is states.start:
-        state = response_check("", send_command("", states.data, states.data))
-        return state if state is states.error else\
-            response_check("", send_command("", states.start, states.message))
-    return response_check(line, send_command(line, command, state))
+def statecheck(line, command, state):  # ensure state sligns with command
+    if state is states.data and command is states.start:
+        state = responsecheck("", sendcmd("", states.data, states.data))
+        if state is states.error:
+            return state
+        return responsecheck("", sendcmd("", states.start, states.msg))
+    return responsecheck(line, sendcmd(line, command, state))
 
 
-def send_command(line, command, state):  # write command to stdout
-    if state is states.message:
+def sendcmd(line, command, state):  # write command to stdout
+    if state is states.msg:
         if command is states.start:
-            print(".")
+            conn.send(".\n".encode())
+            return states.finish
+        else:
+            conn.send(line.encode())
         return state
     elif command is states.start and state is states.start:
-            print("MAIL FROM: " + line[line.index('<'):].rstrip('\n'))
+        conn.send(("MAIL FROM: " + line[line.index('<'):]).encode())
     elif command is states.rcpt and state in [states.rcpt, states.data]:
-        print("RCPT TO: " + line[line.index('<'):].rstrip('\n'))
+        conn.send(("RCPT TO: " + line[line.index('<'):]).encode())
     elif command is states.data and state is states.data:
-        print("DATA")
+        conn.send(("DATA" + "\n").encode())
     else:
         return states.error
     return command
 
 
-def response_check(line, command):  # check response against state
-    response = sys.stdin.readline()
-    sys.stderr.write(response.rstrip('\n') + "\n")  # ensure one newline char
+def responsecheck(line, command):  # check response against state
+    if command is states.msg:
+        return command
+    response = conn.recv(1024).decode()
+    print(response.rstrip('\n'))
     if command is states.data:
         if response.startswith("354"):
-            if not line == "":
-                print(line.rstrip('\n'))
-            return states.message
+            sendcmd(line, states.msg, states.msg)
+            return states.msg
     elif response.startswith("250"):
-        return states.start if command is states.message else command + 1
+        return states.start if command is states.finish else command + 1
     return states.error
 
 
 def process_email():  # process input and output
     state = states.start
     line = ""
+    userin = []
     hostname = socket.gethostname()
-    print(hostname)
     server_port = 14615
-    print(server_port)
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((hostname, server_port))
-    while True:
-        message = raw_input('message: ')
-        client_socket.send(message.encode() + '\n')
-        response = client_socket.recv(1024).decode()
-        print("response: " + response)
-        client_socket.close()
-        '''
-        state = state_check(line, command_check(line), state)
+    global input
+    try:
+        input = raw_input
+    except NameError:
+        pass
+    userin[0] = input("From: ")
+    while not smtp.path.match(userin[0]):
+        print("Invalid email address")
+        userin[0] = input("From: ")
+    userin[1] = input("To: ")
+    while not smtp.path.match(userin[1]):
+        print("Invalid email address")
+        userin[1] = input("To: ")
+    userin[2] = input("Subject: ")
+    userin[3] = input("Message: ")
+    while not smtp.message_end.match(userin[-1]):
+        userin.append(input())
+    global conn
+    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    conn.connect((hostname, server_port))
+    response = conn.recv(1024).decode()
+    print(response)
+    if response.startswith("220"):
+        conn.send("HELO " + hostname)
+    else:
+        return
+    for line in fileinput.input():
+        print(line.rstrip('\n'))
+        state = statecheck(line, commandcheck(line), state)
         if state is states.start:
-            state = state_check(line, command_check(line), state)
+            state = statecheck(line, commandcheck(line), state)
         if state is states.error:
             break
     if state is states.data:
-        state = response_check("", send_command("", states.data, states.data))
-        if states is not states.error:
-            response_check("", send_command("", states.start, states.message))
-    elif state is states.message:
-        response_check(line, send_command(line, states.start, state))
-    print("QUIT")
-'''
+        statecheck("", states.start, states.data)
+    elif state is states.msg:
+        responsecheck(line, sendcmd(line, states.start, state))
+    conn.send("QUIT".encode())
+    conn.close()
 
 process_email()
