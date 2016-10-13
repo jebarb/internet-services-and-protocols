@@ -56,7 +56,7 @@ def state_check(state, command):  # ensure state+input align, send message
         conn.send("501 Syntax error in parameters or arguments".encode())
     else:
         conn.send("503 Bad sequence of commands".encode())
-    return states.start  # on error, reset to start state
+    return states.bad_cmd
 
 
 def write_to_file(sender, recipients, email_text):  # write email to file
@@ -87,29 +87,35 @@ def process_smtp():  # process input and output
     while True:
         conn, address = server_socket.accept()
         conn.send(("220 " + hostname).encode())
-        response = conn.recv(1024).decode()
-        print(response)
-        if not response.startswith("HELO"):
+        line = conn.recv(4096).decode()
+        if line.startswith("HELO"):
+            conn.send("250 OK".encode())
+        else:
             continue
         while True:
-            line = conn.recv(1024).decode()
-            print(repr(line))
+            line = conn.recv(4096).decode()
             if state is states.start:
                 sender = email_text = ""
                 recipients = []
-            if not line.startswith("QUIT"):
+            if state is states.body or not line.startswith("QUIT"):
                 state = state_check(state, command_check(line))
                 if state is states.rcpt:
                     sender = line[line.index(':')+1:].strip()
                 elif state is states.data:
                     recipients.append(line[line.index(':')+1:].strip())
-                elif state is states.body:
+                elif state is states.body or states.finish:
                     email_text += line
-            if state is states.finish:
+            if state is states.bad_cmd:  # close on error
+                conn.close()
+                break
+            if state is states.finish:  # write email to file
                 email_text = email_text[email_text.index('\n')+1:]  # rem DATA
+                if email_text.endswith("\n.\n"):
+                    email_text = email_text[:-3]
                 write_to_file(sender, recipients, email_text)
                 state = states.start
-            if line.startswith("QUIT"):
+            if line.startswith("QUIT"):  # close on complete
+                conn.close()
                 break
 
 
