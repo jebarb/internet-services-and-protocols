@@ -1,8 +1,9 @@
 import socket
 import re
+import sys
 
 
-conn = ""
+conn = socket.socket.type  # initialize global variable for socket
 
 
 class smtp:  # define regex
@@ -52,16 +53,22 @@ def state_check(state, command):  # ensure state+input align, send message
         return states.body
     elif command in [states.bad_cmd, states.body]:
         conn.send("500 Syntax error: command unrecognized".encode())
+        print("500 Syntax error: command unrecognized")
     elif command is states.bad_arg:
         conn.send("501 Syntax error in parameters or arguments".encode())
+        print("501 Syntax error in parameters or arguments")
     else:
         conn.send("503 Bad sequence of commands".encode())
+        print("503 Bad sequence of commands")
     return states.bad_cmd
 
 
 def write_to_file(sender, recipients, email_text):  # write email to file
+    domains = []
     for address in recipients:
-        domain = address[address.index('@')+1:address.index('>')]
+        domains.append(address[address.index('@')+1:address.index('>')])
+    domains = list(set(domains))  # remove duplicates
+    for domain in domains:
         out = open("forward/" + domain.strip(), "a+")  # remove <>
         out.write("From: " + sender + '\n')
         out.write("To: ")
@@ -75,11 +82,17 @@ def write_to_file(sender, recipients, email_text):  # write email to file
 
 # ADD PORT NUMBER AS COMMAND LINE ARG
 def process_smtp():  # process input and output
+    if len(sys.argv) < 2 or not sys.argv[1].isdigit():
+        print("TCP port absent or invalid")
+        return
+    if int(sys.argv[1]) < 1025 or int(sys.argv[1]) > 65536:
+        print("TCP port out of range")
+        return
+    port = int(sys.argv[1])
     sender = email_text = ""
     recipients = []
     state = states.start
     hostname = socket.gethostname()
-    port = 14615
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('', port))
     server_socket.listen(1)
@@ -88,12 +101,14 @@ def process_smtp():  # process input and output
         conn, address = server_socket.accept()
         conn.send(("220 " + hostname).encode())
         line = conn.recv(4096).decode()
+        print(line)
         if line.startswith("HELO"):
             conn.send("250 OK".encode())
         else:
             continue
         while True:
             line = conn.recv(4096).decode()
+            print(line)
             if state is states.start:
                 sender = email_text = ""
                 recipients = []
@@ -106,12 +121,13 @@ def process_smtp():  # process input and output
                 elif state is states.body or states.finish:
                     email_text += line
             if state is states.bad_cmd:  # close on error
+                print(line.rstrip('\n'))
                 conn.close()
                 break
             if state is states.finish:  # write email to file
                 email_text = email_text[email_text.index('\n')+1:]  # rem DATA
                 if email_text.endswith("\n.\n"):
-                    email_text = email_text[:-3]
+                    email_text = email_text[:-2]  # rem '.\n'
                 write_to_file(sender, recipients, email_text)
                 state = states.start
             if line.startswith("QUIT"):  # close on complete
