@@ -63,20 +63,13 @@ def state_check(state, command):  # ensure state+input align, send message
     return states.bad_cmd
 
 
-def write_to_file(sender, recipients, email_text):  # write email to file
+def write_to_file(recipients, email_text):  # write email to file
     domains = []
     for address in recipients:
         domains.append(address[address.index('@')+1:address.index('>')])
     domains = list(set(domains))  # remove duplicates
     for domain in domains:
-        out = open("forward/" + domain.strip(), "a+")  # remove <>
-        out.write("From: " + sender + '\n')
-        out.write("To: ")
-        for i in range(0, len(recipients)):
-            if i == len(recipients) - 1:
-                out.write(recipients[i] + '\n')
-            else:
-                out.write(recipients[i] + ',')
+        out = open("forward/" + domain.strip(), "a+")
         out.write(email_text)
 
 
@@ -89,7 +82,7 @@ def process_smtp():  # process input and output
         print("TCP port out of range")
         return
     port = int(sys.argv[1])
-    sender = email_text = ""
+    email_text = ""
     recipients = []
     state = states.start
     hostname = socket.gethostname()
@@ -110,25 +103,23 @@ def process_smtp():  # process input and output
             line = conn.recv(4096).decode()
             print(line)
             if state is states.start:
-                sender = email_text = ""
+                email_text = ""
                 recipients = []
             if state is states.body or not line.startswith("QUIT"):
                 state = state_check(state, command_check(line))
-                if state is states.rcpt:
-                    sender = line[line.index(':')+1:].strip()
-                elif state is states.data:
+                if state is states.data:
                     recipients.append(line[line.index(':')+1:].strip())
-                elif state is states.body or states.finish:
+                if state is states.body or state is states.finish:
                     email_text += line
             if state is states.bad_cmd:  # close on error
                 print(line.rstrip('\n'))
                 conn.close()
                 break
             if state is states.finish:  # write email to file
-                email_text = email_text[email_text.index('\n')+1:]  # rem DATA
+                email_text = email_text.lstrip()[5:]  # rem DATA
                 if email_text.endswith("\n.\n"):
                     email_text = email_text[:-2]  # rem '.\n'
-                write_to_file(sender, recipients, email_text)
+                write_to_file(recipients, email_text)
                 state = states.start
             if line.startswith("QUIT"):  # close on complete
                 conn.close()

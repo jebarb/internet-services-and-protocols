@@ -40,7 +40,9 @@ def process_email():  # process input and output
     while not smtp.forward_path.match(userin[1]):
         print("Invalid email address")
         userin[1] = input("To: ")
-    userin.append(input("Subject: ") + '\n')
+    userin.append("From: " + userin[0] + '\n')
+    userin[-1] += "To: " + userin[1] + '\n'
+    userin[-1] += "Subject: " + input("Subject: ") + '\n\n'
     userin[-1] += input("Message: ") + '\n'
     while not userin[-1] == ".\n" and not userin[-1].endswith("\n.\n"):
         userin[-1] += input() + '\n'
