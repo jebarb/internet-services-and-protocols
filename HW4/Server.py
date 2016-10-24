@@ -13,6 +13,7 @@ class smtp:  # define regex
                       "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*>( |\t)*\n$")
     data = re.compile("^DATA( |\t)*\n$")
     end_data = re.compile("^\.\n$")
+    domain = re.compile("^[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*$")
 
 
 class states:      # define states
@@ -73,12 +74,13 @@ def write_to_file(recipients, email_text):  # write email to file
         out.write(email_text)
 
 
-# ADD PORT NUMBER AS COMMAND LINE ARG
 def process_smtp():  # process input and output
+    # Validate command line args
+    # argv[1] is port
     if len(sys.argv) < 2 or not sys.argv[1].isdigit():
         print("TCP port absent or invalid")
         return
-    if int(sys.argv[1]) < 1025 or int(sys.argv[1]) > 65536:
+    if int(sys.argv[1]) < 0 or int(sys.argv[1]) > 65536:
         print("TCP port out of range")
         return
     port = int(sys.argv[1])
@@ -90,18 +92,23 @@ def process_smtp():  # process input and output
     server_socket.bind(('', port))
     server_socket.listen(1)
     global conn
+    # always accept connections
     while True:
         conn, address = server_socket.accept()
         conn.send(("220 " + hostname).encode())
         line = conn.recv(4096).decode()
-        print(line)
         if line.startswith("HELO"):
-            conn.send("250 OK".encode())
+            line = line.split(' ')
+            if len(line) < 2:
+                conn.send(("250 Hello, pleased to meet you").encode())
+            else:
+                conn.send(("250 Hello " + line[1] + ", pleased to meet you")
+                          .encode())
         else:
             continue
+        # Process SMTP
         while True:
             line = conn.recv(4096).decode()
-            print(line)
             if state is states.start:
                 email_text = ""
                 recipients = []
@@ -112,7 +119,6 @@ def process_smtp():  # process input and output
                 if state is states.body or state is states.finish:
                     email_text += line
             if state is states.bad_cmd:  # close on error
-                print(line.rstrip('\n'))
                 conn.close()
                 break
             if state is states.finish:  # write email to file

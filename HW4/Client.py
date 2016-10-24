@@ -14,13 +14,15 @@ class smtp:  # define regex
 
 
 def process_email():  # process input and output
+    # validate command line args
+    # argv[1] is hostname, argv[2] is port
     if len(sys.argv) < 3:
         print("TCP port or domain absent")
         return
     if not sys.argv[2].isdigit() or not smtp.domain.match(sys.argv[1]):
         print("TCP port or domain invalid")
         return
-    if int(sys.argv[2]) < 1025 or int(sys.argv[2]) > 65536:
+    if int(sys.argv[2]) < 0 or int(sys.argv[2]) > 65536:
         print("TCP port out of range")
         return
     port = int(sys.argv[2])
@@ -40,50 +42,47 @@ def process_email():  # process input and output
         print("Invalid email address")
         userin[1] = input("To: ")
     userin.append("From: " + userin[0] + '\n')
+    # Build SMTP DATA portion
     userin[-1] += "To: " + userin[1] + '\n'
     userin[-1] += "Subject: " + input("Subject: ") + '\n\n'
     userin[-1] += input("Message: ") + '\n'
     while not userin[-1] == ".\n" and not userin[-1].endswith("\n.\n"):
         userin[-1] += input() + '\n'
     recipients = userin[1].split(',')
-    if recipients is None:
+    if recipients is None:  # if only one recipient
         recipients = userin[1]
+    # initialize connection, recieve/send greeting
     global conn
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     conn.connect((domain, port))
     response = conn.recv(4096).decode()
-    print(response)
     if not response.startswith("220"):
         print(response.rstrip('\n'))
         return
-    conn.send(("HELO " + domain + " please to meet you\n").encode())
+    conn.send(("HELO " + socket.gethostname()).encode())
     response = conn.recv(4096).decode()
-    print(response)
     if not response.startswith("250"):
         print(response.rstrip('\n'))
         return
     conn.send(("MAIL FROM: <" + userin[0] + ">\n").encode())
     response = conn.recv(4096).decode()
-    print(response)
     if not response.startswith("250"):
         print(response.rstrip('\n'))
         return
     for addr in recipients:
         conn.send(("RCPT TO: <" + addr + ">\n").encode())
         response = conn.recv(4096).decode()
-        print(response)
         if not response.startswith("250"):
             print(response.rstrip('\n'))
             return
     conn.send("DATA\n".encode())
     response = conn.recv(4096).decode()
-    print(response)
     if not response.startswith("354"):
         print(response.rstrip('\n'))
         return
+    # Send data portion
     conn.send(userin[2].encode())
     response = conn.recv(4096).decode()
-    print(response)
     if not response.startswith("250"):
         print(response.rstrip('\n'))
         return
