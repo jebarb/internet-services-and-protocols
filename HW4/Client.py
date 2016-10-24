@@ -10,8 +10,7 @@ class smtp:  # define regex
                               "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*)*$")
     reverse_path = re.compile("^[^\s<>()[\]\.,;:@\"]+" +
                               "@[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*$")
-    # domain = re.compile("^[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*$")
-    domain = re.compile(".*")
+    domain = re.compile("^[a-z][a-z0-9]+(\.[a-z][a-z0-9]+)*$")
 
 
 def process_email():  # process input and output
