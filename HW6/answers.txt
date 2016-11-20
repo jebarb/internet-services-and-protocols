@@ -1,0 +1,17 @@
+1. 
+
+2. (1Gb/s)*RTT/(mss bytes) = window size
+3. No, if one connection dominates and which connection will drop connections is non-deterministic, both connection will remain roughly at the same relative rates
+4. 
+5. 2RTT+OT/R+(k-1)(ST/R+RTT)-(2^P-1)ST/R
+6. Yes, assuming the window size is not sufficiently small to negate the problem, if a file over 4GB is sent over a very fast but very high-latency connection, say pushing a software update to a future Mars rover. Assume the sequence number starts at 1, eventually wraps around and hits 1 again. If a packet is lost for a sequence number that has been hit more than once, we won't know which actual packet it was because that sequence number has occurred more than once.
+7. 
+8. a) 
+   b) 
+   c) 
+9. 0: 2^6 00000000-00111111
+   1: 2^5 01000000-01011111
+   2: 2^5 01100000-01111111
+   3: 2^6 10000000-10111111
+   4: 2^6 11000000-11111111
+10. 
